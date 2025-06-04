@@ -1,22 +1,22 @@
 const nodemailer = require("nodemailer");
 
-// const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: "mayalachristgottlieb@gmail.com",
-//     pass: "ueevblhcjwjtudzw", // mot de passe d'application, pas le mot de passe normal
-//   },
-// });
-
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",  // ✅ important
-  port: 587,
-  secure: false, // TLS (STARTTLS) activé automatiquement
+  service: "gmail",
   auth: {
-    user: process.env.BREVO_USER,       // par ex. contact@tondomaine.com
-    pass: process.env.BREVO_PASSWORD,   // clé API SMTP
+    user: "mayalachristgottlieb@gmail.com",
+    pass: "ueevblhcjwjtudzw", // mot de passe d'application, pas le mot de passe normal
   },
 });
+
+// const transporter = nodemailer.createTransport({
+//   host: "smtp-relay.brevo.com",  // ✅ important
+//   port: 587,
+//   secure: false, // TLS (STARTTLS) activé automatiquement
+//   auth: {
+//     user: process.env.BREVO_USER,       // par ex. contact@tondomaine.com
+//     pass: process.env.BREVO_PASSWORD,   // clé API SMTP
+//   },
+// });
 
 
 const sendEmail = async ({ to, subject, code }) => {

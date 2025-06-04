@@ -1,47 +1,51 @@
 const Annonce = require("../models/Property");
 const User = require("../models/User");
+const { logger } = require("../logging");
 
 // Ajouter ou retirer un favori
 const toggleFavori = async (req, res) => {
   try {
     const userId = req.user.id;
     const annonceId = req.params.id;
+    logger.debug(`Toggle favori - User: ${userId}, Annonce: ${annonceId}`);
 
-    // Vérifier si l'utilisateur et l'annonce existent
     const user = await User.findById(userId);
     const annonce = await Annonce.findById(annonceId);
 
     if (!user || !annonce) {
+      logger.warn(`Utilisateur ou annonce introuvable - User: ${userId}, Annonce: ${annonceId}`);
       return res.status(404).json({ message: "Utilisateur ou annonce introuvable." });
     }
 
-    // Convertir les favoris en tableau de strings pour comparaison
     const userFavoris = user.favoris.map(f => f.toString());
     const annonceFavoris = annonce.favoris.map(f => f.toString());
-
-    // Vérifier si l'annonce est déjà dans les favoris de l'utilisateur
     const dejaFavori = userFavoris.includes(annonceId);
 
     if (dejaFavori) {
-      // Retirer l'annonce des favoris
       user.favoris = user.favoris.filter(f => f.toString() !== annonceId);
       annonce.favoris = annonce.favoris.filter(u => u.toString() !== userId);
+      logger.info(`Annonce retirée des favoris - User: ${userId}, Annonce: ${annonceId}`);
     } else {
-      // Ajouter l'annonce aux favoris
       user.favoris.push(annonceId);
       annonce.favoris.push(userId);
+      logger.info(`Annonce ajoutée aux favoris - User: ${userId}, Annonce: ${annonceId}`);
     }
 
-    // Sauvegarder les modifications dans la base de données
     await user.save();
     await annonce.save();
 
+    logger.debug(`Mise à jour favoris réussie - User: ${userId}, Total favoris: ${user.favoris.length}`);
+    
     res.json({
       message: dejaFavori ? "Annonce retirée des favoris." : "Annonce ajoutée aux favoris.",
       favoris: user.favoris,
     });
   } catch (err) {
-    console.error("Erreur favoris:", err);
+    logger.error(`Erreur toggle favori: ${err.message}`, {
+      stack: err.stack,
+      userId: req.user?.id,
+      annonceId: req.params.id
+    });
     res.status(500).json({ message: "Erreur serveur lors de la mise à jour des favoris." });
   }
 };
@@ -49,16 +53,23 @@ const toggleFavori = async (req, res) => {
 // Récupérer les favoris de l'utilisateur
 const getFavoris = async (req, res) => {
   try {
-    // Récupérer l'utilisateur avec ses favoris peuplés
-    const user = await User.findById(req.user.id).populate("favoris");
+    const userId = req.user.id;
+    logger.debug(`Récupération favoris - User: ${userId}`);
+
+    const user = await User.findById(userId).populate("favoris");
 
     if (!user) {
+      logger.warn(`Utilisateur introuvable - User: ${userId}`);
       return res.status(404).json({ message: "Utilisateur introuvable." });
     }
 
+    logger.info(`Favoris récupérés - User: ${userId}, Total: ${user.favoris.length}`);
     res.json(user.favoris);
   } catch (err) {
-    console.error("Erreur récupération favoris:", err);
+    logger.error(`Erreur récupération favoris: ${err.message}`, {
+      stack: err.stack,
+      userId: req.user?.id
+    });
     res.status(500).json({ message: "Erreur serveur lors de la récupération des favoris." });
   }
 };

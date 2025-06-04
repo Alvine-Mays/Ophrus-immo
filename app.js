@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
-const { logger, morganMiddleware } = require("./logging");
+const { logger, morganMiddleware } = require('./logging');
 
 dotenv.config();
 const app = express();
@@ -11,7 +11,7 @@ const connectDB = require("./config/db");
 connectDB();
 
 // Initialisation des logs
-logger.info("🚀 Démarrage de l'application");
+logger.info('Démarrage de l\'application Ophrus-Immo');
 logger.info(`Mode: ${process.env.NODE_ENV || 'development'}`);
 logger.info(`Node: ${process.version}`);
 
@@ -24,6 +24,11 @@ app.use(express.urlencoded({
   extended: true,
   limit: '10kb'
 }));
+app.use(morganMiddleware);
+app.use((err, req, res, next) => {
+  logger.error(`Erreur non traitée: ${err.message}`, { stack: err.stack });
+  res.status(500).json({ error: 'Erreur interne du serveur' });
+});
 
 // 🔐 Middlewares de sécurité
 const security = require("./middlewares/security");
