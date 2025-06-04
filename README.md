@@ -60,6 +60,27 @@ Analyse de tendances immobilières vendue aux professionnels
 •	Paiement en ligne pour réserver un bien
 •	Carte interactive avec géolocalisation
 
+ Production Complète
+Objectif : Offrir une solution robuste, rapide, scalable et sécurisée, prête à gérer un trafic important, avec des outils premium.
+Cette version est idéale dès que le service commence à recevoir des utilisateurs actifs ou qu’une mise en ligne publique est prévue.
+Poste	Détails	Coût estimé 
+Hébergement Backend (Railway Pro)	Offre Pro, rapide et stable pour Node.js.	120 000 XAF/an (~10 000 XAF/mois)
+Base de données (MongoDB Atlas Flex)	Cluster flexible et scalable, ~8–18 USD/mois selon usage.	216 000 XAF/an (~18 000 XAF/mois)
+Nom de domaine (.com ou .cd)	Nom de domaine professionnel.	8 000 XAF/an
+Envoi d’e-mails transactionnels (MailerSend)	Envoi de mails automatisés (plan pro).	36 000 XAF/an (~3 000 XAF/mois)
+Main-d'œuvre de conception et développement	Paiement unique. 30% à la commande.	600 000 XAF (180 000 XAF à la commande)
+Frais de publication Google Play Store	Paiement unique.	14 500 XAF
+Frais de publication Apple App Store	Compte développeur Apple annuel.	57 100 XAF/an (~99 USD/an)
+Authentification OTP via Firebase	Option gratuite ou en fonction du volume.	Gratuit (limite Firebase)
+TOTAL ESTIMÉ PRODUCTION		1 051 600 XAF
+
+________________________________________
+
+Au 18 avril 2025, le taux de change du dollar américain (USD) vers le franc CFA BEAC (XAF) est d'environ 576,72 XAF pour 1 USD, selon les données de Xe.
+Pourquoi cette double approche ?
+Le projet OPHRUS Immo est conçu pour être économique au départ, mais scalable et robuste dès que l’activité augmente.
+Ce choix progressif permet de maîtriser les dépenses tout en anticipant la croissance du service.
+
 🎯 Objectif : Générer de l’intérêt avant de demander un compte
 En tant que développeur visionnaire et entrepreneur intelligent (oui, toi), tu dois comprendre le comportement utilisateur :
 
@@ -255,10 +276,11 @@ cd ophrous-frontend
 * Routing public/privé (`/favoris`, `/tickets` protégés)
 
 ---
-exemple
 
 / (accueil) → SSG
 
 /biens/[id] → SSR (car chaque bien est unique et change souvent)
 
 /contact, /favoris → SSR ou client-side si besoin d’auth
+
+https://github.com/Alvine-Mays/Ophrus-immo.git

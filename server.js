@@ -1,9 +1,16 @@
-// === server.js ===
 const app = require('./app');
-require('dotenv').config();
-
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+require('./config/db')()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ Failed to start:', err);
+    process.exit(1);
+  });
+
+// Garder le processus actif
+setInterval(() => {}, 1000);
