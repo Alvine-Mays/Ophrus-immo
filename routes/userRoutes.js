@@ -18,6 +18,7 @@ const {
   updateUser,
   refreshToken,
   searchUsers,
+  deleteUser,
   requestPasswordReset,
   verifyResetCode,
   resetPasswordWithCode,
@@ -36,5 +37,6 @@ router.post("/reset-password", validateResetPassword, resetPasswordWithCode);
 router.get("/profil", protect, getUser);
 router.put("/:id", protect, updateUser);
 router.get("/search", protect, searchUsers);
+router.delete("/users/:id", protect, deleteUser);
 
 module.exports = router;

@@ -56,25 +56,19 @@ exports.registerUser = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ nom, email, telephone, password: hashed });
+    const user = await User.create({ 
+      nom, 
+      email, 
+      telephone, 
+      password: hashed,
+      refreshTokens: [] // Initialisation explicite
+    });
 
     const token = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     user.refreshTokens.push(refreshToken);
     await user.save();
-
-    logger.info(`Nouvel utilisateur inscrit ID: ${user._id}`, {
-      email: user.email,
-      telephone: user.telephone
-    });
-
-    res.status(201).json({
-      _id: user._id,
-      nom: user.nom,
-      email: user.email,
-      token,
-      refreshToken,
-    });
+    
   } catch (error) {
     logger.error(`Erreur lors de l'inscription: ${error.message}`, {
       stack: error.stack,
@@ -95,7 +89,7 @@ exports.loginUser = async (req, res) => {
 
     const user = await User.findOne({
       $or: [{ email: identifier }, { nom: identifier }],
-    });
+    }).select('+password +refreshTokens'); // Ajout de +refreshTokens
 
     if (!user) {
       logger.warn(`Identifiant non trouvé: ${identifier}`);
@@ -110,7 +104,13 @@ exports.loginUser = async (req, res) => {
 
     const token = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
+    
+    // Initialisation du tableau si undefined
+    if (!user.refreshTokens) {
+      user.refreshTokens = [];
+    }
     user.refreshTokens.push(refreshToken);
+    
     await user.save();
 
     logger.info(`Connexion réussie ID: ${user._id}`, {
@@ -294,8 +294,7 @@ exports.requestPasswordReset = async (req, res) => {
     });
 
     logger.info(`Code de réinitialisation envoyé à: ${email}`, {
-      userId: user._id,
-      code: code // Note: En prod, ne pas logger le code réel
+      userId: user._id
     });
 
     res.status(200).json({ message: "Code envoyé par email." });
@@ -329,7 +328,7 @@ exports.verifyResetCode = async (req, res) => {
     }
 
     if (user.resetCode !== String(code).trim()) {
-      logger.warn(`Code incorrect pour: ${email} (entré: ${code}, attendu: ${user.resetCode})`);
+      logger.warn(`Code incorrect pour: ${email}`);
       return res.status(400).json({ message: "Code invalide ou expiré." });
     }
 
@@ -357,7 +356,8 @@ exports.resetPasswordWithCode = async (req, res) => {
     const { email, code, newPassword } = req.body;
     logger.debug(`Demande de réinitialisation de mot de passe pour: ${email}`);
 
-    const user = await User.findOne({ email, resetCode: code });
+    // Modification ici - ajout de .select('+password')
+    const user = await User.findOne({ email, resetCode: code }).select('+password');
     if (!user || user.resetCodeExpires < Date.now()) {
       logger.warn(`Code invalide/expiré pour la réinitialisation: ${email}`);
       return res.status(400).json({ message: "Code invalide ou expiré." });
@@ -405,6 +405,71 @@ exports.searchUsers = async (req, res) => {
     logger.error(`Erreur lors de la recherche d'utilisateurs: ${error.message}`, {
       stack: error.stack,
       query: req.query
+    });
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* DELETE /api/users/:id – Supprime un utilisateur                    */
+/* ------------------------------------------------------------------ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.id !== id) {
+      logger.warn(`Suppression non autorisée par l'utilisateur ID: ${req.user.id}`);
+      return res.status(403).json({ message: "Action non autorisée" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      logger.error(`Utilisateur à supprimer non trouvé ID: ${id}`);
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    }
+
+    await user.deleteOne();
+
+    logger.info(`Utilisateur supprimé avec succès ID: ${id}`);
+    res.status(200).json({ message: "Compte utilisateur supprimé avec succès." });
+
+  } catch (error) {
+    logger.error(`Erreur lors de la suppression de l'utilisateur: ${error.message}`, {
+      stack: error.stack,
+      userId: req.params.id
+    });
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* DELETE /api/users/:id – Supprime un utilisateur                    */
+/* ------------------------------------------------------------------ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifie que l'utilisateur connecté correspond à celui qu'on veut supprimer
+    if (req.user.id !== id) {
+      logger.warn(`Suppression non autorisée par l'utilisateur ID: ${req.user.id}`);
+      return res.status(403).json({ message: "Action non autorisée" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      logger.error(`Utilisateur à supprimer non trouvé ID: ${id}`);
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    }
+
+    await user.deleteOne();
+
+    logger.info(`Utilisateur supprimé avec succès ID: ${id}`);
+    res.status(200).json({ message: "Compte utilisateur supprimé avec succès." });
+
+  } catch (error) {
+    logger.error(`Erreur lors de la suppression de l'utilisateur: ${error.message}`, {
+      stack: error.stack,
+      userId: req.params.id
     });
     res.status(500).json({ message: "Erreur serveur." });
   }
