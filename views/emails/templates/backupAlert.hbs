@@ -1,0 +1,24 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0;">
+  {{> header}}
+  
+  <div style="padding: 20px;">
+    <h2 style="color: {{#eq severity 'critical'}}#e74c3c{{else}}#f39c12{{/eq}};">
+      Alerte {{alertType}}
+    </h2>
+    
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
+      <p style="margin: 0; font-weight: bold;">{{alertMessage}}</p>
+    </div>
+    
+    <p>Date de l'alerte : {{date}}</p>
+    <p>Serveur : {{serverName}}</p>
+    
+    <a href="{{appUrl}}/admin/alerts" 
+       style="display: inline-block; padding: 10px 15px; background-color: #3498db; 
+              color: white; text-decoration: none; border-radius: 5px;">
+      Voir le tableau de bord
+    </a>
+  </div>
+  
+  {{> footer}}
+</div>

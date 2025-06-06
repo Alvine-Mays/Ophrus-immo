@@ -13,16 +13,28 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "L'email est requis"],
       unique: true,
-      trim: true
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+        message: "Email invalide"
+      }
     },
     password: {
       type: String,
-      required: [true, "Le mot de passe est requis"], 
+      required: [true, "Le mot de passe est requis"],
+      minlength: [8, "Le mot de passe doit contenir au moins 8 caractères"],
       select: false
     },
     telephone: {
       type: String,
-      required: [true, "Le téléphone est requis"] 
+      required: [true, "Le téléphone est requis"],
+      validate: {
+        validator: function(v) {
+          return /^\+?[\d\s-]{10,}$/.test(v);
+        },
+        message: "Numéro de téléphone invalide"
+      }
     },
     role: {
       type: String,
@@ -56,7 +68,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
       default: null,
-      index: { expires: '1h' } // Nettoyage automatique par MongoDB après expiration
+      index: { expires: '1h' }
+    },
+    deleted: {
+      type: Boolean,
+      default: false,
+      select: false
+    },
+    deletedAt: {
+      type: Date,
+      select: false
     }
   },
   {
@@ -69,16 +90,23 @@ const userSchema = new mongoose.Schema(
         delete ret.refreshTokens;
         delete ret.resetCode;
         delete ret.resetCodeExpires;
+        delete ret.deleted;
+        delete ret.deletedAt;
         return ret;
       }
     }
   }
 );
 
-// Empêche la suppression accidentelle
+// Middleware pour exclure les utilisateurs supprimés
+userSchema.pre(/^find/, function() {
+  this.where({ deleted: { $ne: true } });
+});
+
+// Empêche la suppression du dernier admin
 userSchema.pre('remove', async function(next) {
   if (this.role === 'admin') {
-    const adminCount = await this.constructor.countDocuments({ role: 'admin' });
+    const adminCount = await this.constructor.countDocuments({ role: 'admin', deleted: false });
     if (adminCount <= 1) {
       throw new Error("Impossible de supprimer le dernier admin");
     }
