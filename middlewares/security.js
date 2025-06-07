@@ -5,7 +5,7 @@ const cors = require('cors');
 const { body, validationResult } = require('express-validator');
 const { parsePhoneNumberFromString } = require('libphonenumber-js');
 const disposableDomains = require('disposable-email-domains');
-const { logger, morganMiddleware } = require('../logging');
+const { logger, morganMiddleware } = require('../utils/logging'); 
 const xss = require('xss');
 
 // Configuration XSS

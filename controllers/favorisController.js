@@ -1,6 +1,6 @@
 const Annonce = require("../models/Property");
 const User = require("../models/User");
-const { logger } = require("../logging");
+const { logger } = require('../utils/logging');
 
 // Ajouter ou retirer un favori
 const toggleFavori = async (req, res) => {

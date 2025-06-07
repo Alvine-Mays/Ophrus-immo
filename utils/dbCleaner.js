@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { logger } = require('../logging');
+const { logger } = require('./logging');
 const mongoose = require('mongoose');
 
 module.exports = {

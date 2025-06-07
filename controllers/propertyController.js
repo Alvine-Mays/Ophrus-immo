@@ -2,7 +2,7 @@ const Property = require("../models/Property");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary");
 const asyncHandler = require("express-async-handler");
-const { logger } = require("../logging");
+const { logger } = require('../utils/logging');
 
 /* ------------------------------------------------------------------ */
 /*  Gestion des favoris                                               */

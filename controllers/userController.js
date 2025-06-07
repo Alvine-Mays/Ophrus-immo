@@ -1,3 +1,4 @@
+const mongoose = require("mongoose"); 
 const crypto = require("crypto");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
@@ -5,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
-const { logger } = require("../logging");
+const { logger } = require('../utils/logging');
 
 // Génère un token de rafraîchissement
 const generateRefreshToken = (id) => {
@@ -68,7 +69,7 @@ exports.registerUser = async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
     user.refreshTokens.push(refreshToken);
     await user.save();
-    
+
   } catch (error) {
     logger.error(`Erreur lors de l'inscription: ${error.message}`, {
       stack: error.stack,
@@ -411,66 +412,174 @@ exports.searchUsers = async (req, res) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* DELETE /api/users/:id – Supprime un utilisateur                    */
+/* DELETE /api/users/:id – Soft delete amélioré                       */
 /* ------------------------------------------------------------------ */
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUser = req.user;
 
-    if (req.user.id !== id) {
-      logger.warn(`Suppression non autorisée par l'utilisateur ID: ${req.user.id}`);
-      return res.status(403).json({ message: "Action non autorisée" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      logger.warn(`ID utilisateur invalide: ${id}`);
+      return res.status(400).json({ 
+        success: false,
+        message: "ID utilisateur invalide" 
+      });
     }
 
-    const user = await User.findById(id);
-    if (!user) {
-      logger.error(`Utilisateur à supprimer non trouvé ID: ${id}`);
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    const userToDelete = await User.findById(id);
+    
+    // Vérifications combinées
+    if (!userToDelete || userToDelete.deleted) {
+      logger.warn(`Utilisateur introuvable ID: ${id}`);
+      return res.status(404).json({ 
+        success: false,
+        message: "Utilisateur non trouvé" 
+      });
     }
 
-    await user.deleteOne();
+    // Vérification des permissions améliorée
+    const isOwner = currentUser.id === id;
+    const isAdmin = currentUser.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      logger.warn(`Tentative de suppression non autorisée par ${currentUser.email}`);
+      return res.status(403).json({ 
+        success: false,
+        message: "Action non autorisée" 
+      });
+    }
 
-    logger.info(`Utilisateur supprimé avec succès ID: ${id}`);
-    res.status(200).json({ message: "Compte utilisateur supprimé avec succès." });
+    // Protection admin renforcée
+    if (userToDelete.role === 'admin') {
+      const activeAdmins = await User.countDocuments({ 
+        role: 'admin', 
+        deleted: false,
+        _id: { $ne: id } // Exclut l'utilisateur actuel
+      });
+      
+      if (activeAdmins < 1) {
+        logger.warn(`Tentative de suppression du dernier admin ID: ${id}`);
+        return res.status(400).json({
+          success: false,
+          message: "Impossible de supprimer le dernier administrateur"
+        });
+      }
+    }
+
+    // Soft delete optimisé
+    const result = await User.findByIdAndUpdate(
+      id,
+      {
+        $set: { 
+          deleted: true,
+          deletedAt: new Date() 
+        },
+        $unset: {
+          refreshTokens: "",
+          resetCode: "",
+          resetCodeExpires: ""
+        }
+      },
+      { new: true }
+    );
+
+    logger.info(`Soft delete réussi ID: ${id}`, {
+      actionBy: currentUser.email,
+      deletedAt: result.deletedAt
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: result._id,
+        email: result.email,
+        deletedAt: result.deletedAt
+      }
+    });
 
   } catch (error) {
-    logger.error(`Erreur lors de la suppression de l'utilisateur: ${error.message}`, {
-      stack: error.stack,
+    logger.error(`Erreur suppression utilisateur: ${error.message}`, {
+      error,
       userId: req.params.id
     });
-    res.status(500).json({ message: "Erreur serveur." });
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur"
+    });
   }
 };
 
 /* ------------------------------------------------------------------ */
-/* DELETE /api/users/:id – Supprime un utilisateur                    */
+/* PATCH /api/users/:id/restore – Restaure un utilisateur             */
 /* ------------------------------------------------------------------ */
-exports.deleteUser = async (req, res) => {
+exports.restoreUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifie que l'utilisateur connecté correspond à celui qu'on veut supprimer
-    if (req.user.id !== id) {
-      logger.warn(`Suppression non autorisée par l'utilisateur ID: ${req.user.id}`);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID utilisateur invalide" });
+    }
+
+    // Seul un admin peut restaurer
+    if (req.user.role !== 'admin') {
       return res.status(403).json({ message: "Action non autorisée" });
     }
 
-    const user = await User.findById(id);
+    const user = await User.findOneAndUpdate(
+      { _id: id, deleted: true },
+      { 
+        $set: { deleted: false },
+        $unset: { deletedAt: 1 }
+      },
+      { new: true }
+    );
+
     if (!user) {
-      logger.error(`Utilisateur à supprimer non trouvé ID: ${id}`);
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
+      return res.status(404).json({ message: "Utilisateur supprimé non trouvé" });
     }
 
-    await user.deleteOne();
+    logger.info(`Utilisateur restauré - ID: ${id} par ${req.user.email}`);
 
-    logger.info(`Utilisateur supprimé avec succès ID: ${id}`);
-    res.status(200).json({ message: "Compte utilisateur supprimé avec succès." });
+    res.status(200).json({ 
+      success: true,
+      message: "Utilisateur restauré avec succès",
+      data: {
+        id: user._id,
+        email: user.email
+      }
+    });
 
   } catch (error) {
-    logger.error(`Erreur lors de la suppression de l'utilisateur: ${error.message}`, {
-      stack: error.stack,
-      userId: req.params.id
+    logger.error(`Erreur restauration: ${error.message}`, {
+      userId: req.params.id,
+      error
     });
-    res.status(500).json({ message: "Erreur serveur." });
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* GET /api/users/deleted – Liste des utilisateurs supprimés (admin)  */
+/* ------------------------------------------------------------------ */
+exports.getDeletedUsers = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Action non autorisée" });
+    }
+
+    const users = await User.find({ deleted: true })
+      .select("nom email role deletedAt")
+      .sort({ deletedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+
+  } catch (error) {
+    logger.error(`Erreur liste utilisateurs supprimés: ${error.message}`);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };

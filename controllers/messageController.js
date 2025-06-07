@@ -1,7 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Message = require("../models/Message");
 const User = require("../models/User");
-const { logger } = require("../logging");
+const { logger } = require('../utils/logging');
 
 const OPHRUS_EMAIL = "ophrus@example.com";
 
