@@ -1,8 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
-const { logger,morganMiddleware } = require('./utils/logging');
-
+const { logger,morganMiddleware } = require('./utils/logging'); 
 dotenv.config();
 const app = express();
 
